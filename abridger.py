@@ -1,5 +1,6 @@
 from twython import Twython
 import sqlite3
+import requests
 
 # Add developer tokens below
 twitter = Twython("", "",
@@ -19,12 +20,17 @@ def abridger(account):
             url = tweet['entities']['urls'][0]['expanded_url']
         except:
             continue
+        if url.startswith('https://twitter.com'): continue
+        # follow redirects to get final article URL
+        url = requests.head(url, allow_redirects=True).url
+        # strip out tracking garbage from end of URL
+        if url.find('?'): 
+            url = url.split('?')[0]
         cur.execute('SELECT url FROM Twitter WHERE url = ? LIMIT 1', (url, ))
         foundurl = cur.fetchone()
         if foundurl is None:
             cur.execute('INSERT INTO Twitter (url) VALUES (?)', (url, ))
             conn.commit()
-            print('Added', url)
             twitter.retweet(id=tweet['id_str'])
 
 for account in accounts:
